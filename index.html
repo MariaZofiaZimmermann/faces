@@ -1,168 +1,68 @@
-<!DOCTYPE html>
-<html lang="pl">
-<head>
-  <meta charset="UTF-8">
-  <title>Eksperyment – takie same czy różne</title>
-
-  <script src="https://cdn.jsdelivr.net/npm/jspsych@6.3.1/jspsych.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspsych@6.3.1/plugins/jspsych-html-button-response.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspsych@6.3.1/plugins/jspsych-html-keyboard-response.js"></script>
-
-  <link href="https://cdn.jsdelivr.net/npm/jspsych@6.3.1/css/jspsych.css" rel="stylesheet" />
-
-  <style>
-    .jspsych-content {
-      max-width: 100% !important;
-      width: 100% !important;
-    }
-
-    .jspsych-content-wrapper {
-      max-width: 100% !important;
-    }
-
-    body {
-      margin: 0;
-      background-color: #f5f5f5;
-    }
-
-    .video-container {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 20px;
-      margin-top: 20px;
-    }
-
-    video {
-      width: 48vw;
-      height: auto;
-    }
-
-    .jspsych-btn {
-      font-size: 60px !important;
-      padding: 30px 80px !important;
-      margin: 30px !important;
-    }
-
-    .center {
-      text-align: center;
-      font-size: 32px;
-      margin-top: 40px;
-    }
-  </style>
-</head>
-
-<body></body>
-
 <script>
-  const SAVE_URL = "https://script.google.com/macros/s/AKfycbwwCh-A1CNyL442cZLeZrnhrMfczw0x2XgVURyg4O_gGjZ_miReohON2WKjwozRq7qK/exec";
-
-  let timeline = [];
-
-  timeline.push({
-    type: 'html-keyboard-response',
-    stimulus: `
-      <div class="center">
-        <p>Zobaczysz dwa filmiki obok siebie.</p>
-        <p>Czy są takie same czy różne?</p>
-        <p>Naciśnij dowolny klawisz, żeby zacząć.</p>
-      </div>
-    `
-  });
-
-  const pairs = [
-    { left: "1a.mp4", right: "1b.mp4", correct: "same" },
-    { left: "1a.mp4", right: "1c.mp4", correct: "different" },
-    { left: "2a.mp4", right: "2b.mp4", correct: "same" },
-    { left: "2a.mp4", right: "2c.mp4", correct: "different" }
-  ];
-
-  pairs.forEach(pair => {
-    timeline.push({
-      type: 'html-button-response',
-      stimulus: `
-        <div class="video-container">
-          <video controls playsinline>
-            <source src="${pair.left}" type="video/mp4">
-          </video>
-
-          <video controls playsinline>
-            <source src="${pair.right}" type="video/mp4">
-          </video>
-        </div>
-      `,
-      choices: ['Takie same', 'Różne'],
-      data: {
-        left: pair.left,
-        right: pair.right,
-        correct_answer: pair.correct
-      },
-      on_finish: function(data) {
-        data.response_label = data.button_pressed == 0 ? "same" : "different";
-        data.correct = (data.response_label === data.correct_answer);
+    jsPsych.init({
+      timeline: timeline,
+      on_finish: function() {
+        const trials = jsPsych.data.get()
+          .filter({ trial_type: "html-button-response" })
+          .values();
+  
+        const payload = {
+          participant: "test",
+          trials: trials.map(t => ({
+            left: t.left,
+            right: t.right,
+            response: t.response_label,
+            correct: t.correct
+          }))
+        };
+  
+        // zbuduj TSV od razu
+        let tsv = "left\tright\tresponse\tcorrect\n";
+        trials.forEach(t => {
+          tsv += [
+            t.left || "",
+            t.right || "",
+            t.response_label || "",
+            typeof t.correct !== "undefined" ? t.correct : ""
+          ].join("\t") + "\n";
+        });
+  
+        const blob = new Blob([tsv], { type: "text/tab-separated-values" });
+        const tsvUrl = URL.createObjectURL(blob);
+  
+        // pokaż ekran końcowy od razu z linkiem backupowym
+        document.body.innerHTML = `
+          <div class="center" style="margin-top:40px;">
+            <h2>Zapisywanie danych...</h2>
+            <p>Jeśli dane nie zapiszą się online, kliknij poniżej:</p>
+            <p>
+              <a id="backupLink" href="${tsvUrl}" download="backup_results.tsv"
+                 style="font-size:32px;">
+                Pobierz backup TSV
+              </a>
+            </p>
+            <p id="saveStatus" style="font-size:28px;"></p>
+          </div>
+        `;
+  
+        fetch(SAVE_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "text/plain;charset=utf-8"
+          },
+          body: JSON.stringify(payload)
+        })
+        .then(response => response.text())
+        .then(text => {
+          console.log("Server response:", text);
+          document.getElementById("saveStatus").innerText =
+            "Dane wysłane online. Dla bezpieczeństwa możesz też pobrać backup TSV.";
+        })
+        .catch(err => {
+          console.error("Błąd zapisu online:", err);
+          document.getElementById("saveStatus").innerText =
+            "Nie udało się zapisać online. Kliknij link powyżej, żeby pobrać backup TSV.";
+        });
       }
     });
-  });
-
-  function downloadTSV(trials) {
-    let tsv = "left\tright\tresponse\tcorrect\n";
-    trials.forEach(t => {
-      tsv += [
-        t.left || "",
-        t.right || "",
-        t.response_label || "",
-        typeof t.correct !== "undefined" ? t.correct : ""
-      ].join("\t") + "\n";
-    });
-
-    const blob = new Blob([tsv], { type: "text/tab-separated-values" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "backup_results.tsv";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }
-
-  jsPsych.init({
-    timeline: timeline,
-    on_finish: function() {
-      document.body.innerHTML = "<div class='center'><h2>Zapisywanie danych...</h2></div>";
-
-      const trials = jsPsych.data.get()
-        .filter({ trial_type: "html-button-response" })
-        .values();
-
-      const payload = {
-        participant: "test",
-        trials: trials.map(t => ({
-          left: t.left,
-          right: t.right,
-          response: t.response_label,
-          correct: t.correct
-        }))
-      };
-
-      fetch(SAVE_URL, {
-        method: "POST",
-        mode: "no-cors",
-        headers: {
-          "Content-Type": "text/plain;charset=utf-8"
-        },
-        body: JSON.stringify(payload)
-      })
-      .then(() => {
-        document.body.innerHTML = "<div class='center'><h2>Dziękujemy! Dane zapisane.</h2></div>";
-      })
-      .catch(err => {
-        console.error("Błąd zapisu online:", err);
-        downloadTSV(trials);
-        document.body.innerHTML = "<div class='center'><h2>Online się nie udało. Pobrano backup TSV.</h2></div>";
-      });
-    }
-  });
-</script>
-
-</html>
+  </script>
