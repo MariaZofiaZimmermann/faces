@@ -14,16 +14,24 @@
     .video-container {
       display: flex;
       justify-content: center;
-      gap: 30px;
-      margin: 30px;
+      gap: 90px;
+      margin: 40px;
     }
 
     video {
-      width: 300px;
+      width: 900px;
+      max-width: 42vw;
     }
 
     .center {
       text-align: center;
+      font-size: 32px;
+    }
+
+    .jspsych-btn {
+      font-size: 48px !important;
+      padding: 30px 60px !important;
+      margin: 20px !important;
     }
   </style>
 </head>
@@ -33,7 +41,6 @@
 <script>
   let timeline = [];
 
-  /******** INSTRUKCJA ********/
   timeline.push({
     type: 'html-keyboard-response',
     stimulus: `
@@ -45,16 +52,13 @@
     `
   });
 
-  /******** PARy TESTOWE ********/
   const pairs = [
     { left: "1a.mp4", right: "1b.mp4", correct: "same" },
     { left: "1a.mp4", right: "1c.mp4", correct: "different" },
-
     { left: "2a.mp4", right: "2b.mp4", correct: "same" },
     { left: "2a.mp4", right: "2c.mp4", correct: "different" }
   ];
 
-  /******** TRIALE ********/
   pairs.forEach(pair => {
     timeline.push({
       type: 'html-button-response',
@@ -73,18 +77,17 @@
       data: pair,
       on_finish: function(data) {
         data.response_label = data.button_pressed == 0 ? "same" : "different";
-        data.correct = (data.response_label === data.correct);
+        data.correct_response = data.correct;
+        data.correct = (data.response_label === data.correct_response);
       }
     });
   });
 
-  /******** KONIEC ********/
   timeline.push({
     type: 'html-keyboard-response',
     stimulus: `<div class="center"><h2>Koniec</h2></div>`
   });
 
-  /******** START ********/
   jsPsych.init({
     timeline: timeline,
     on_finish: function() {
