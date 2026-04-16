@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>Test – takie same czy różne</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/jspsych@6.3.1/jspsych.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspsych@6.3.1/plugins/jspsych-html-button-response.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspsych@6.3.1/plugins/jspsych-html-keyboard-response.js"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/jspsych@6.3.1/css/jspsych.css" rel="stylesheet" />
+
+  <style>
+    .video-container {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      margin: 30px;
+    }
+
+    video {
+      width: 300px;
+    }
+
+    .center {
+      text-align: center;
+    }
+  </style>
+</head>
+
+<body></body>
+
+<script>
+  let timeline = [];
+
+  /******** INSTRUKCJA ********/
+  timeline.push({
+    type: 'html-keyboard-response',
+    stimulus: `
+      <div class="center">
+        <p>Zobaczysz dwa filmiki.</p>
+        <p>Czy są takie same czy różne?</p>
+        <p>Naciśnij dowolny klawisz, żeby zacząć.</p>
+      </div>
+    `
+  });
+
+  /******** PARy TESTOWE ********/
+  const pairs = [
+    { left: "1a.mp4", right: "1b.mp4", correct: "same" },
+    { left: "1a.mp4", right: "1c.mp4", correct: "different" },
+
+    { left: "2a.mp4", right: "2b.mp4", correct: "same" },
+    { left: "2a.mp4", right: "2c.mp4", correct: "different" }
+  ];
+
+  /******** TRIALE ********/
+  pairs.forEach(pair => {
+    timeline.push({
+      type: 'html-button-response',
+      stimulus: `
+        <div class="video-container">
+          <video controls>
+            <source src="${pair.left}" type="video/mp4">
+          </video>
+
+          <video controls>
+            <source src="${pair.right}" type="video/mp4">
+          </video>
+        </div>
+      `,
+      choices: ['Takie same', 'Różne'],
+      data: pair,
+      on_finish: function(data) {
+        data.response_label = data.button_pressed == 0 ? "same" : "different";
+        data.correct = (data.response_label === data.correct);
+      }
+    });
+  });
+
+  /******** KONIEC ********/
+  timeline.push({
+    type: 'html-keyboard-response',
+    stimulus: `<div class="center"><h2>Koniec</h2></div>`
+  });
+
+  /******** START ********/
+  jsPsych.init({
+    timeline: timeline,
+    on_finish: function() {
+      console.log(jsPsych.data.get().values());
+    }
+  });
+</script>
+
+</html>
