@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8">
-  <title>Test – takie same czy różne</title>
+  <title>Eksperyment – takie same czy różne</title>
 
   <!-- jsPsych -->
   <script src="https://cdn.jsdelivr.net/npm/jspsych@6.3.1/jspsych.js"></script>
@@ -27,7 +27,6 @@
       background-color: #f5f5f5;
     }
 
-    /* 🎬 kontener filmów */
     .video-container {
       display: flex;
       justify-content: center;
@@ -36,13 +35,11 @@
       margin-top: 20px;
     }
 
-    /* 🎬 DUŻE FILMY */
     video {
       width: 48vw;
       height: auto;
     }
 
-    /* 🔘 DUŻE PRZYCISKI */
     .jspsych-btn {
       font-size: 60px !important;
       padding: 30px 80px !important;
@@ -60,6 +57,8 @@
 <body></body>
 
 <script>
+  const SAVE_URL = "https://script.google.com/macros/s/AKfycbwwCh-A1CNyL442cZLeZrnhrMfczw0x2XgVURyg4O_gGjZ_miReohON2WKjwozRq7qK/exec";
+
   let timeline = [];
 
   /******** INSTRUKCJA ********/
@@ -98,11 +97,14 @@
         </div>
       `,
       choices: ['Takie same', 'Różne'],
-      data: pair,
+      data: {
+        left: pair.left,
+        right: pair.right,
+        correct_answer: pair.correct
+      },
       on_finish: function(data) {
         data.response_label = data.button_pressed == 0 ? "same" : "different";
-        data.correct_response = data.correct;
-        data.correct = (data.response_label === data.correct_response);
+        data.correct = (data.response_label === data.correct_answer);
       }
     });
   });
@@ -113,11 +115,39 @@
     stimulus: `<div class="center"><h2>Koniec</h2></div>`
   });
 
-  /******** START ********/
+  /******** START + ZAPIS ********/
   jsPsych.init({
     timeline: timeline,
     on_finish: function() {
-      console.log(jsPsych.data.get().values());
+
+      const trials = jsPsych.data.get()
+        .filter({ trial_type: "html-button-response" })
+        .values();
+
+      const payload = {
+        participant: "test",
+        trials: trials.map(t => ({
+          left: t.left,
+          right: t.right,
+          response: t.response_label,
+          correct: t.correct
+        }))
+      };
+
+      fetch(SAVE_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "text/plain"
+        },
+        body: JSON.stringify(payload)
+      })
+      .then(() => {
+        document.body.innerHTML = "<h1 style='text-align:center;margin-top:40px;'>Dziękujemy! KONIEC</h1>";
+      })
+      .catch(err => {
+        console.error(err);
+        alert("Błąd zapisu!");
+      });
     }
   });
 </script>
