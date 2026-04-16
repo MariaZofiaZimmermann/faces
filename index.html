@@ -4,11 +4,9 @@
   <meta charset="UTF-8">
   <title>Eksperyment – takie same czy różne</title>
 
-  <!-- jsPsych NAJPIERW -->
   <script src="https://cdn.jsdelivr.net/npm/jspsych@6.3.1/jspsych.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspsych@6.3.1/plugins/jspsych-html-button-response.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspsych@6.3.1/plugins/jspsych-html-keyboard-response.js"></script>
-
   <link href="https://cdn.jsdelivr.net/npm/jspsych@6.3.1/css/jspsych.css" rel="stylesheet" />
 
   <style>
@@ -74,7 +72,6 @@
 
   const timeline = [];
 
-  /******** START ********/
   timeline.push({
     type: 'html-keyboard-response',
     stimulus: `
@@ -86,7 +83,6 @@
     `
   });
 
-  /******** PARy ********/
   const pairs = [
     { left: "1a.mp4", right: "1b.mp4", correct: "same" },
     { left: "1a.mp4", right: "1c.mp4", correct: "different" },
@@ -94,7 +90,6 @@
     { left: "2a.mp4", right: "2c.mp4", correct: "different" }
   ];
 
-  /******** TRIALE ********/
   pairs.forEach(pair => {
     timeline.push({
       type: 'html-button-response',
@@ -102,10 +97,12 @@
         <div class="video-container">
           <video controls playsinline>
             <source src="${pair.left}" type="video/mp4">
+            Twoja przeglądarka nie obsługuje wideo.
           </video>
 
           <video controls playsinline>
             <source src="${pair.right}" type="video/mp4">
+            Twoja przeglądarka nie obsługuje wideo.
           </video>
         </div>
       `,
@@ -116,31 +113,36 @@
         correct_answer: pair.correct
       },
       on_finish: function(data) {
-        data.response_label = data.button_pressed == 0 ? "same" : "different";
+        const idx = Number(data.button_pressed);
+
+        const responseCodes = ['same', 'different'];
+        const responseTexts = ['Takie same', 'Różne'];
+
+        data.response_index = idx;
+        data.response_label = responseCodes[idx];
+        data.response_text = responseTexts[idx];
         data.correct = (data.response_label === data.correct_answer);
       }
     });
   });
 
-  /******** TSV ********/
   function buildTSV(trials) {
-    let tsv = "left\tright\tresponse\tcorrect\n";
+    let tsv = "left\tright\tresponse_label\tresponse_text\tcorrect\n";
     trials.forEach(t => {
       tsv += [
         t.left || "",
         t.right || "",
         t.response_label || "",
+        t.response_text || "",
         (typeof t.correct !== "undefined") ? t.correct : ""
       ].join("\t") + "\n";
     });
     return tsv;
   }
 
-  /******** START jsPsych ********/
   jsPsych.init({
     timeline: timeline,
     on_finish: function() {
-
       const trials = jsPsych.data.get()
         .filter({ trial_type: "html-button-response" })
         .values();
@@ -170,6 +172,7 @@
           left: t.left,
           right: t.right,
           response: t.response_label,
+          response_text: t.response_text,
           correct: t.correct
         }))
       };
